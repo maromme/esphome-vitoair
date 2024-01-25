@@ -1,0 +1,186 @@
+esphome:
+  name: test-can
+  friendly_name: test can
+
+esp8266:
+  board: esp01_1m
+
+# Enable logging
+logger:
+  level: DEBUG
+  logs:
+    canbus: ERROR
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: 
+
+ota:
+  password: 
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  manual_ip:
+    static_ip: 192.168.0.9
+    gateway: 192.168.0.1
+    subnet: 255.255.255.0
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Test-Can Fallback Hotspot"
+    password: "yZXII3swcU1w"
+
+captive_portal:
+
+spi:
+  id: McpSpi
+  clk_pin: GPIO16
+  mosi_pin: GPIO5
+  miso_pin: GPIO4
+
+globals:
+  - id: dids
+    type: std::vector<std::vector<std::string>>
+    initial_value: '{
+      {"327", "OutdoorAirTemperatureSensor", {0x03, 0x22, 0x01, 0x47, 0x00, 0x00, 0x00, 0x00}},
+      {"328", "SupplyAirTemperatureSensor",  {0x03, 0x22, 0x01, 0x48, 0x00, 0x00, 0x00, 0x00}},
+      {"329", "ExtractAirTemperatureSensor", {0x03, 0x22, 0x01, 0x49, 0x00, 0x00, 0x00, 0x00}},
+      {"330", "ExhaustAirTemperatureSensor", {0x03, 0x22, 0x01, 0x4A, 0x00, 0x00, 0x00, 0x00}},
+      {"419", "OutdoorAirHumiditySensor",    {0x03, 0x22, 0x01, 0xA3, 0x00, 0x00, 0x00, 0x00}},
+      {"420", "SupplyAirHumiditySensor",     {0x03, 0x22, 0x01, 0xA4, 0x00, 0x00, 0x00, 0x00}},
+      {"421", "ExtractAirHumiditySensor",    {0x03, 0x22, 0x01, 0xA5, 0x00, 0x00, 0x00, 0x00}},
+      {"422", "ExhaustAirHumiditySensor",    {0x03, 0x22, 0x01, 0xA6, 0x00, 0x00, 0x00, 0x00}},
+      }'
+
+  - id: loop_dids
+    type: int
+    restore_value: no
+    initial_value: '0' 
+
+canbus:
+  - platform: mcp2515
+    id: cb
+    spi_id: McpSpi
+    cs_pin: GPIO14
+    can_id: 680
+    bit_rate: 250kbps
+    on_frame:
+      - can_id: 0x690 
+        then:
+          - lambda: |-
+              ESP_LOGD("deb", "empfangen: 0x%02X %02X %02X %02X %02X %02X %02X %02X", x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7]);
+              if(x[0]==0x10 and x[2]==0x62) {  
+                if(x[1]==0x0C) {
+                    int did = int16_t((x[4])+((x[3])<<8));
+                    switch(did) {
+                        case 327:
+                          id(va327).publish_state(float(int16_t((x[5])+((x[6])<<8)))*0.1);
+                          break;
+                        case 328:
+                          id(va328).publish_state(float(int16_t((x[5])+((x[6])<<8)))*0.1);
+                          break;
+                        case 329:
+                          id(va329).publish_state(float(int16_t((x[5])+((x[6])<<8)))*0.1);
+                          break;
+                        case 330:
+                          id(va330).publish_state(float(int16_t((x[5])+((x[6])<<8)))*0.1);
+                          break;
+                    }
+                  }
+                  if(x[1]==0x08) {
+                    int did = int16_t((x[4])+((x[3])<<8));
+                    switch(did) {
+                        case 419:
+                          id(va419).publish_state(int16_t(x[5]));
+                          break;
+                        case 420:
+                          id(va420).publish_state(int16_t(x[5]));
+                          break;
+                        case 421:
+                          id(va421).publish_state(int16_t(x[5]));
+                          break;
+                        case 422:
+                          id(va422).publish_state(int16_t(x[5]));
+                          break;                          
+                    }
+                  }
+                }
+
+interval:
+- interval: 2s
+  then:
+    - lambda: |-
+        int i = id(loop_dids);
+        std::vector< uint8_t > data0{ id(dids)[i][2][0], id(dids)[i][2][1], id(dids)[i][2][2], id(dids)[i][2][3], id(dids)[i][2][4], id(dids)[i][2][5], id(dids)[i][2][6], id(dids)[i][2][7] };
+        id(cb)->send_data(0x680, 0, data0);
+        ESP_LOGD("deb", "gesendet: 0x%02X %02X %02X %02X %02X %02X %02X %02X", id(dids)[i][2][0], id(dids)[i][2][1], id(dids)[i][2][2], id(dids)[i][2][3], id(dids)[i][2][4], id(dids)[i][2][5], id(dids)[i][2][6], id(dids)[i][2][7]);
+        if ( i < size(id(dids))-1) { id(loop_dids) = i + 1;}
+          else { id(loop_dids) = 0; }
+
+sensor:
+  - platform: template
+    name: "Outdoor Air Temperature Sensor"
+    id: va327
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: "measurement"
+    accuracy_decimals: 1
+
+  - platform: template
+    name: "Supply Air Temperature Sensor"
+    id: va328
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: "measurement"
+    accuracy_decimals: 1
+
+  - platform: template
+    name: "Extract Air Temperature Sensor"
+    id: va329
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: "measurement"
+    accuracy_decimals: 1
+
+  - platform: template
+    name: "Exhaust Air Temperature Sensor"
+    id: va330
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: "measurement"
+    accuracy_decimals: 1
+
+  - platform: template
+    name: "Outdoor Air Humidity Sensor"
+    id: va419
+    unit_of_measurement: "%"
+    device_class: humidity
+    state_class: "measurement"
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Supply Air Humidity Sensor"
+    id: va420
+    unit_of_measurement: "%"
+    device_class: humidity
+    state_class: "measurement"
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Extract Air Humidity Sensor"
+    id: va421
+    unit_of_measurement: "%"
+    device_class: humidity
+    state_class: "measurement"
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Exhaust Air Humidity Sensor"
+    id: va422
+    unit_of_measurement: "%"
+    device_class: humidity
+    state_class: "measurement"
+    accuracy_decimals: 0
+
