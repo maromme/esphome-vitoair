@@ -8,7 +8,9 @@ Thanks for the great projekt and the help!
 
 ## Resources:
 understanding the can-bus protocoll: https://www.csselectronics.com/pages/uds-protocol-tutorial-unified-diagnostic-services
+
 datapoints of the vitoair: https://github.com/open3e/open3e/blob/master/Open3EdatapointsVair.py
+
 description of the datapoints: https://github.com/open3e/open3e/blob/master/Open3Edatapoints.py
 
 ## hardware
