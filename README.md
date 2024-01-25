@@ -20,6 +20,8 @@ https://esphome.io/_images/canbus_mcp2515_txs0108e.png
 ## to be aware of
 Usually you should use the can bus in a way that yous send a request - wait for the answer - process the answer and then start over again. I didn't do so. I send requests every x seconds (interval) and hope that in the time between two requests the answer is recieved and processed. I don't take care of multiframe meassages. A interval of 2 seconds seems relaiable in my setting.
 
+For now the setup is just "read-only". It's possible to write values, but for that some more code is necessary.
+
 ## configuration
 The sample conig contains 4 sensors. Others might follow. In the datapoints.txt you find a (maybe) complete list of the merged files from the open3e project.
 To add more datapoints you have to look at three parts of the conig: 
