@@ -28,6 +28,8 @@ To add more datapoints you have to look at three parts of the conig:
 1) the array "dids" under globals
 2) the switch statement under canbus
 3) add more sensors at the end
+
+There is now a config.yaml with more datapoints.
    
 ```
 spi:
